@@ -102,6 +102,8 @@ class PSUControl(octoprint.plugin.StartupPlugin,
             idleTimeoutWaitTemp = 50,
             turnOnWhenApiUploadPrint = False,
             turnOffWhenError = False
+            idleIgnoreHeaters = 'X', 
+            
         )
 
 
@@ -366,13 +368,16 @@ class PSUControl(octoprint.plugin.StartupPlugin,
     def _wait_for_heaters(self):
         self._waitForHeaters = True
         heaters = self._printer.get_current_temperatures()
+        ignored_heaters = self._settings.get(["idleIgnoreHeaters"]).split(',')
 
         for heater, entry in heaters.items():
             target = entry.get("target")
-            if target is None:
-                # heater doesn't exist in fw
+            if target is None or heater in ignored_heaters:
+ 				# heater doesn't exist in fw or set to be ignored
                 continue
-
+            
+            
+            self._logger.debug("Heater %s Temperature: %s", heater, target )
             try:
                 temp = float(target)
             except ValueError:
@@ -384,8 +389,13 @@ class PSUControl(octoprint.plugin.StartupPlugin,
                 self._skipIdleTimer = True
                 self._printer.set_temperature(heater, 0)
                 self._skipIdleTimer = False
+                # target temperature for Heatbreak can`t set (Heater "X"), so checking if target temp below wait Temp.
+                #if temp > self.config['idleTimeoutWaitTemp']:
+                #    self._skipIdleTimer = False
             else:
                 self._logger.debug("Heater {} already off.".format(heater))
+                
+
 
         while True:
             if not self._waitForHeaters:
@@ -396,7 +406,7 @@ class PSUControl(octoprint.plugin.StartupPlugin,
             highest_temp = 0
             heaters_above_waittemp = []
             for heater, entry in heaters.items():
-                if not heater.startswith("tool"):
+				if not heater.startswith("tool") or heater in ignored_heaters:
                     continue
 
                 actual = entry.get("actual")
@@ -410,7 +420,7 @@ class PSUControl(octoprint.plugin.StartupPlugin,
                     # not a float for some reason, skip it
                     continue
 
-                self._logger.debug("Heater {} = {}C".format(heater, temp))
+                self._logger.debug("1{} = {}C".format(heater, temp))
                 if temp > self.config['idleTimeoutWaitTemp']:
                     heaters_above_waittemp.append(heater)
 
@@ -419,6 +429,7 @@ class PSUControl(octoprint.plugin.StartupPlugin,
 
             if highest_temp <= self.config['idleTimeoutWaitTemp']:
                 self._waitForHeaters = False
+                self._logger.debug("Heaters cooled down, highest temp: {}.".format(highest_temp))
                 return True
 
             self._logger.info("Waiting for heaters({}) before shutting off PSU...".format(', '.join(heaters_above_waittemp)))
