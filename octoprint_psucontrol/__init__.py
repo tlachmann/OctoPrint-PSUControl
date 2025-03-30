@@ -101,7 +101,7 @@ class PSUControl(octoprint.plugin.StartupPlugin,
             idleIgnoreCommands = 'M105',
             idleTimeoutWaitTemp = 50,
             turnOnWhenApiUploadPrint = False,
-            turnOffWhenError = False
+            turnOffWhenError = False,
             idleIgnoreHeaters = 'X', 
             
         )
@@ -373,7 +373,7 @@ class PSUControl(octoprint.plugin.StartupPlugin,
         for heater, entry in heaters.items():
             target = entry.get("target")
             if target is None or heater in ignored_heaters:
- 				# heater doesn't exist in fw or set to be ignored
+                 # heater doesn't exist in fw or set to be ignored
                 continue
             
             
@@ -406,7 +406,7 @@ class PSUControl(octoprint.plugin.StartupPlugin,
             highest_temp = 0
             heaters_above_waittemp = []
             for heater, entry in heaters.items():
-				if not heater.startswith("tool") or heater in ignored_heaters:
+                if not heater.startswith("tool") or heater in ignored_heaters:
                     continue
 
                 actual = entry.get("actual")
